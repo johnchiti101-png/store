@@ -84,6 +84,8 @@ export function useRealtimeOrders(storeId: string | null): UseRealtimeOrdersRetu
 
   // Handle status update from popup
   const handleStatusUpdate = useCallback((orderId: string, newStatus: string) => {
+    console.log("[v0] handleStatusUpdate called - orderId:", orderId, "newStatus:", newStatus)
+    
     // When an order is accepted, capture its revenue
     if (newStatus === "accepted") {
       const order = pendingOrders.find(o => o.id === orderId)
@@ -110,8 +112,12 @@ export function useRealtimeOrders(storeId: string | null): UseRealtimeOrdersRetu
       }
     }
     
-    // Add to dismissed so popup doesn't reappear
+    // Add to dismissed so popup doesn't reappear for THIS order
     setDismissedOrderIds(prev => new Set([...prev, orderId]))
+    
+    // Clear the current popup so the next pending order can trigger
+    setPendingOrderForPopup(null)
+    console.log("[v0] Cleared pendingOrderForPopup after status update")
   }, [pendingOrders, acceptedOrders])
 
   useEffect(() => {
@@ -199,7 +205,7 @@ export function useRealtimeOrders(storeId: string | null): UseRealtimeOrdersRetu
     const nextOrder = pendingOrders.find(o => !dismissedOrderIds.has(o.id))
     
     console.log("[v0] Checking for popup - pendingOrders:", pendingOrders.length, 
-      "dismissedIds:", dismissedOrderIds.size, 
+      "dismissedIds:", [...dismissedOrderIds], 
       "currentPopup:", pendingOrderForPopup?.id || "none",
       "nextOrder:", nextOrder?.id || "none")
     
@@ -207,6 +213,17 @@ export function useRealtimeOrders(storeId: string | null): UseRealtimeOrdersRetu
     if (nextOrder && !pendingOrderForPopup) {
       console.log("[v0] Showing popup for order:", nextOrder.id)
       setPendingOrderForPopup(nextOrder)
+    }
+    
+    // Clean up dismissed IDs that are no longer in pending orders
+    // This prevents the set from growing indefinitely
+    if (dismissedOrderIds.size > 0) {
+      const pendingIds = new Set(pendingOrders.map(o => o.id))
+      const stillRelevant = [...dismissedOrderIds].filter(id => pendingIds.has(id))
+      if (stillRelevant.length !== dismissedOrderIds.size) {
+        console.log("[v0] Cleaning up dismissed IDs - keeping:", stillRelevant)
+        setDismissedOrderIds(new Set(stillRelevant))
+      }
     }
   }, [pendingOrders, dismissedOrderIds, pendingOrderForPopup])
 
