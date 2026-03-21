@@ -33,9 +33,6 @@ export function useRealtimeOrders(storeId: string | null): UseRealtimeOrdersRetu
   
   // Track captured revenue from accepted orders (persists even after becoming completed)
   const [capturedRevenueIds, setCapturedRevenueIds] = useState<Set<string>>(new Set())
-  
-  // Track previous pending order IDs to detect new orders
-  const [knownPendingIds, setKnownPendingIds] = useState<Set<string>>(new Set())
 
   // Convert Firestore timestamp to Date
   const convertTimestamp = (timestamp: unknown): Date => {
@@ -131,20 +128,6 @@ export function useRealtimeOrders(storeId: string | null): UseRealtimeOrdersRetu
 
     console.log("[v0] Setting up Firestore listener for storeId:", storeId)
 
-    // Debug: First fetch ALL orders to see what storeIds exist
-    const debugQuery = query(
-      collection(db, "orders"),
-      orderBy("createdAt", "desc")
-    )
-    
-    onSnapshot(debugQuery, (snapshot) => {
-      console.log("[v0] DEBUG - All orders in database:", snapshot.docs.length)
-      snapshot.docs.forEach((doc) => {
-        const data = doc.data()
-        console.log("[v0] DEBUG - Order:", doc.id, "storeId:", data.storeId, "status:", data.status, "match:", data.storeId === storeId)
-      })
-    }, { includeMetadataChanges: false })
-
     // Query for ALL orders (pending, accepted, ready_for_pickup, rejected)
     // This ensures we count all orders for "Orders Today"
     const allOrdersQuery = query(
@@ -210,37 +193,22 @@ export function useRealtimeOrders(storeId: string | null): UseRealtimeOrdersRetu
   }, [storeId])
 
   // Separate effect to handle popup triggering based on pending orders
+  // This runs whenever pendingOrders changes and checks if we should show a popup
   useEffect(() => {
-    console.log("[v0] Popup trigger effect - pendingOrders:", pendingOrders.length, "knownPendingIds:", knownPendingIds.size, "dismissedOrderIds:", dismissedOrderIds.size, "currentPopup:", pendingOrderForPopup?.id)
+    // Find the first pending order that hasn't been dismissed
+    const nextOrder = pendingOrders.find(o => !dismissedOrderIds.has(o.id))
     
-    // Find truly NEW pending orders (not previously known and not dismissed)
-    const newPendingOrders = pendingOrders.filter(o => 
-      !knownPendingIds.has(o.id) && !dismissedOrderIds.has(o.id)
-    )
+    console.log("[v0] Checking for popup - pendingOrders:", pendingOrders.length, 
+      "dismissedIds:", dismissedOrderIds.size, 
+      "currentPopup:", pendingOrderForPopup?.id || "none",
+      "nextOrder:", nextOrder?.id || "none")
     
-    console.log("[v0] New pending orders found:", newPendingOrders.length, newPendingOrders.map(o => o.id))
-    
-    // If there's a new pending order and we're not showing any popup, trigger it
-    if (newPendingOrders.length > 0 && !pendingOrderForPopup) {
-      console.log("[v0] Triggering popup for order:", newPendingOrders[0].id)
-      // Show the most recent new pending order
-      setPendingOrderForPopup(newPendingOrders[0])
-    } else if (!pendingOrderForPopup) {
-      // Handle case where current popup was dismissed but there are other pending orders
-      const nextOrder = pendingOrders.find(o => !dismissedOrderIds.has(o.id))
-      if (nextOrder) {
-        console.log("[v0] Showing next pending order:", nextOrder.id)
-        setPendingOrderForPopup(nextOrder)
-      }
+    // If there's a pending order that's not dismissed and we're not showing any popup
+    if (nextOrder && !pendingOrderForPopup) {
+      console.log("[v0] Showing popup for order:", nextOrder.id)
+      setPendingOrderForPopup(nextOrder)
     }
-    
-    // Update known pending IDs after checking for new orders
-    const currentPendingIds = new Set(pendingOrders.map(o => o.id))
-    if (currentPendingIds.size !== knownPendingIds.size || 
-        [...currentPendingIds].some(id => !knownPendingIds.has(id))) {
-      setKnownPendingIds(currentPendingIds)
-    }
-  }, [pendingOrders, dismissedOrderIds, pendingOrderForPopup, knownPendingIds])
+  }, [pendingOrders, dismissedOrderIds, pendingOrderForPopup])
 
   // Compute derived values
   const todayOrders = getTodayOrders(allOrders)
