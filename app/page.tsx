@@ -38,13 +38,11 @@ export default function MerchantApp() {
   const {
     pendingOrders,
     acceptedOrders,
-    completedOrders,
     allOrders,
     todayOrders,
     pendingOrderForPopup,
     dismissPopup,
     handleStatusUpdate,
-    capturedRevenue,
   } = useRealtimeOrders(currentUserId)
 
   const pageOrder = ["dashboard", "orders", "notifications", "settings"]
@@ -420,8 +418,6 @@ export default function MerchantApp() {
               realtimeOrders={allOrders}
               pendingCount={pendingOrders.length}
               acceptedCount={acceptedOrders.length}
-              completedCount={completedOrders.length}
-              capturedRevenue={capturedRevenue}
               onToggleStatus={handleToggleStatus}
               onNavigate={handleNavigate}
             />

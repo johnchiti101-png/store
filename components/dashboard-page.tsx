@@ -10,8 +10,6 @@ interface DashboardPageProps {
   realtimeOrders: FirestoreOrder[]
   pendingCount: number
   acceptedCount: number
-  completedCount: number
-  capturedRevenue: number
   onToggleStatus: () => void
   onNavigate: (page: string) => void
 }
@@ -21,8 +19,6 @@ export function DashboardPage({
   realtimeOrders, 
   pendingCount, 
   acceptedCount,
-  completedCount,
-  capturedRevenue,
   onToggleStatus, 
   onNavigate 
 }: DashboardPageProps) {
