@@ -47,6 +47,13 @@ export default function MerchantApp() {
     capturedRevenue,
   } = useRealtimeOrders(currentUserId)
 
+  // Debug logging
+  useEffect(() => {
+    console.log("[v0] MerchantApp - currentUserId:", currentUserId)
+    console.log("[v0] MerchantApp - pendingOrderForPopup:", pendingOrderForPopup?.id)
+    console.log("[v0] MerchantApp - pendingOrders count:", pendingOrders.length)
+  }, [currentUserId, pendingOrderForPopup, pendingOrders])
+
   const pageOrder = ["dashboard", "orders", "notifications", "settings"]
 
   // Fetch store data from Firestore with retry logic
