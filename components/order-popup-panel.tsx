@@ -107,26 +107,33 @@ export function OrderPopupPanel({ order, onClose, onStatusUpdate }: OrderPopupPa
   const handleTouchEnd = () => {
     setIsDragging(false)
     const maxHide = getMaxHide()
-    const threshold = maxHide * 0.35
+    // Require more significant gesture to hide - 50% of panel height
+    const threshold = maxHide * 0.5
     
-    // Use velocity to determine intent (flick gestures)
-    const shouldHide = dragY > threshold || velocityRef.current < -0.5
-    const shouldShow = dragY < maxHide - threshold || velocityRef.current > 0.5
+    // Use velocity with higher threshold for more intentional gestures
+    // Negative velocity = dragging up (toward hiding), requires strong flick
+    const strongUpwardFlick = velocityRef.current < -0.8
+    const strongDownwardFlick = velocityRef.current > 0.8
     
     if (isHidden) {
       // Currently hidden - check if should show
-      if (shouldShow || dragY < threshold) {
+      // More lenient to show - any significant downward drag or flick
+      if (strongDownwardFlick || dragY < maxHide * 0.4) {
         setDragY(0)
         setIsHidden(false)
       } else {
         setDragY(maxHide)
       }
     } else {
-      // Currently visible - check if should hide
+      // Currently visible - require significant drag or strong flick to hide
+      // This prevents accidental closing
+      const shouldHide = (dragY > threshold && strongUpwardFlick) || dragY > maxHide * 0.7
+      
       if (shouldHide) {
         setDragY(maxHide)
         setIsHidden(true)
       } else {
+        // Snap back to fully visible
         setDragY(0)
       }
     }
@@ -308,7 +315,7 @@ export function OrderPopupPanel({ order, onClose, onStatusUpdate }: OrderPopupPa
         className="relative w-full bg-white overflow-hidden flex flex-col"
         style={{
           transform: `translateY(${isClosing ? "-100%" : isVisible ? -dragY : "-100%"}px)`,
-          transition: isDragging ? "none" : "transform 0.35s cubic-bezier(0.25, 0.46, 0.45, 0.94)",
+          transition: isDragging ? "none" : "transform 0.4s cubic-bezier(0.32, 0.72, 0, 1)",
           maxHeight: "60vh",
           borderBottomLeftRadius: "1.5rem",
           borderBottomRightRadius: "1.5rem",
