@@ -79,24 +79,24 @@ export function useRealtimeOrders(storeId: string | null): UseRealtimeOrdersRetu
   const handleStatusUpdate = useCallback((orderId: string, newStatus: string) => {
     // Update local state immediately for instant UI feedback
     if (newStatus === "accepted") {
+      // Move from pending to accepted - panel stays open to show "Ready for pickup" button
+      const order = pendingOrders.find(o => o.id === orderId)
       setPendingOrders(prev => prev.filter(o => o.id !== orderId))
-      setAcceptedOrders(prev => {
-        const order = pendingOrders.find(o => o.id === orderId)
-        if (order) {
-          return [...prev, { ...order, status: "accepted" as const }]
-        }
-        return prev
-      })
+      if (order) {
+        setAcceptedOrders(prev => [...prev, { ...order, status: "accepted" as const }])
+        // Update the popup order to reflect accepted status (panel stays visible)
+        setPendingOrderForPopup({ ...order, status: "accepted" as const })
+      }
+      // Add to dismissed so it doesn't trigger a new popup if it appears in pending again
+      setDismissedOrderIds(prev => new Set([...prev, orderId]))
     } else if (newStatus === "rejected" || newStatus === "ready_for_pickup") {
+      // Order is complete - close the panel
       setPendingOrders(prev => prev.filter(o => o.id !== orderId))
       setAcceptedOrders(prev => prev.filter(o => o.id !== orderId))
+      // Add to dismissed and clear popup
+      setDismissedOrderIds(prev => new Set([...prev, orderId]))
+      setPendingOrderForPopup(null)
     }
-    
-    // Add to dismissed so popup doesn't reappear
-    setDismissedOrderIds(prev => new Set([...prev, orderId]))
-    
-    // Clear current popup
-    setPendingOrderForPopup(null)
   }, [pendingOrders])
 
   useEffect(() => {
