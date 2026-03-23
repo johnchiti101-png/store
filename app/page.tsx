@@ -38,6 +38,7 @@ export default function MerchantApp() {
   const {
     pendingOrders,
     acceptedOrders,
+    completedOrders,
     allOrders,
     todayOrders,
     pendingOrderForPopup,
@@ -416,8 +417,6 @@ export default function MerchantApp() {
             <DashboardPage
               data={storeData}
               realtimeOrders={allOrders}
-              pendingCount={pendingOrders.length}
-              acceptedCount={acceptedOrders.length}
               onToggleStatus={handleToggleStatus}
               onNavigate={handleNavigate}
             />

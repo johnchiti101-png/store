@@ -8,6 +8,7 @@ import type { FirestoreOrder } from "@/components/order-popup-panel"
 interface UseRealtimeOrdersReturn {
   pendingOrders: FirestoreOrder[]
   acceptedOrders: FirestoreOrder[]
+  completedOrders: FirestoreOrder[]
   allOrders: FirestoreOrder[]
   todayOrders: FirestoreOrder[]
   pastOrders: FirestoreOrder[]
@@ -21,6 +22,7 @@ interface UseRealtimeOrdersReturn {
 export function useRealtimeOrders(storeId: string | null): UseRealtimeOrdersReturn {
   const [pendingOrders, setPendingOrders] = useState<FirestoreOrder[]>([])
   const [acceptedOrders, setAcceptedOrders] = useState<FirestoreOrder[]>([])
+  const [completedOrders, setCompletedOrders] = useState<FirestoreOrder[]>([])
   const [allOrders, setAllOrders] = useState<FirestoreOrder[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -108,11 +110,12 @@ export function useRealtimeOrders(storeId: string | null): UseRealtimeOrdersRetu
     setIsLoading(true)
     setError(null)
 
-    // Query for pending and accepted orders
+    // Query for ALL orders (pending, accepted, ready_for_pickup) - NOT rejected
+    // This ensures dashboard can show all orders and calculate correct totals
     const ordersQuery = query(
       collection(db, "orders"),
       where("storeId", "==", storeId),
-      where("status", "in", ["pending", "accepted"]),
+      where("status", "in", ["pending", "accepted", "ready_for_pickup"]),
       orderBy("createdAt", "desc")
     )
 
@@ -139,10 +142,12 @@ export function useRealtimeOrders(storeId: string | null): UseRealtimeOrdersRetu
 
         const pending = orders.filter(o => o.status === "pending")
         const accepted = orders.filter(o => o.status === "accepted")
+        const completed = orders.filter(o => o.status === "ready_for_pickup")
         
         // Update state
         setPendingOrders(pending)
         setAcceptedOrders(accepted)
+        setCompletedOrders(completed)
         setAllOrders(orders)
         setIsLoading(false)
       },
@@ -174,6 +179,7 @@ export function useRealtimeOrders(storeId: string | null): UseRealtimeOrdersRetu
   return {
     pendingOrders,
     acceptedOrders,
+    completedOrders,
     allOrders,
     todayOrders,
     pastOrders,

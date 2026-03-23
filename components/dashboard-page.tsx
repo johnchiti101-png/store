@@ -8,8 +8,6 @@ import type { FirestoreOrder } from "@/components/order-popup-panel"
 interface DashboardPageProps {
   data: StoreData & { storeInfo?: { logo?: string } }
   realtimeOrders: FirestoreOrder[]
-  pendingCount: number
-  acceptedCount: number
   onToggleStatus: () => void
   onNavigate: (page: string) => void
 }
@@ -17,8 +15,6 @@ interface DashboardPageProps {
 export function DashboardPage({ 
   data, 
   realtimeOrders, 
-  pendingCount, 
-  acceptedCount,
   onToggleStatus, 
   onNavigate 
 }: DashboardPageProps) {
@@ -65,11 +61,12 @@ export function DashboardPage({
     })
     .reduce((sum, o) => sum + o.total, 0)
 
-  // Recent orders - show first 5 orders from Firestore 
-  // Include pending, accepted, and completed (ready_for_pickup)
-  // No time limit - always show first 5 based on order in Firestore
+  // Recent orders - show 5 most recent orders from Firestore 
+  // Include pending, accepted, and completed (ready_for_pickup) - NOT rejected
+  // Sort by createdAt descending to ensure most recent first
   const recentOrders = realtimeOrders
-    .filter(o => o.status === "pending" || o.status === "accepted" || o.status === "ready_for_pickup")
+    .filter(o => o.status !== "rejected")
+    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
     .slice(0, 5)
 
   // Format time
@@ -185,7 +182,7 @@ export function DashboardPage({
             }}
           >
             <p className="text-xs text-white/80">Pending Orders</p>
-            <p className="text-2xl font-bold text-[#f97316] mt-1">{pendingCount}</p>
+            <p className="text-2xl font-bold text-[#f97316] mt-1">{todayPendingOrders}</p>
             <p className="text-[10px] text-white/60 mt-0.5">Action Needed</p>
           </div>
           <div 
