@@ -39,7 +39,7 @@ export function WelcomePage({ onSignIn, onSignUp }: WelcomePageProps) {
             {/* Header */}
             <div className="text-center space-y-2">
               <h1 className="text-2xl font-bold text-white drop-shadow-lg">Welcome to</h1>
-              <h2 className="text-3xl font-bold text-white drop-shadow-lg">Food Delivery Dashboard</h2>
+              <h2 className="text-3xl font-bold text-white drop-shadow-lg">Store Delivery Dashboard</h2>
               <p className="text-white/80 text-sm mt-2">Manage your deliveries with ease</p>
             </div>
 
