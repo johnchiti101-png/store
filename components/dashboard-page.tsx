@@ -36,28 +36,32 @@ export function DashboardPage({
   // Orders Today count - all non-rejected orders for today
   const ordersToday = todayOrders.length
   
-  // Completed orders count (ready_for_pickup status) for today
-  const todayCompletedOrders = todayOrders.filter(o => o.status === "ready_for_pickup").length
+  // Completed orders count for today - all statuses that represent completion
+  const todayCompletedOrders = todayOrders.filter(o =>
+    ["ready_for_pickup", "completed", "delivered", "picked_up", "at_store"].includes(o.status)
+  ).length
   
-  // Pending orders count for today
+  // Pending orders count for today (used only for the "X Completed / X Pending" sub-line)
   const todayPendingOrders = todayOrders.filter(o => o.status === "pending").length
 
-  // Today's revenue - captured when order is accepted, persists through completion
-  // This uses the capturedRevenue prop from the hook which tracks accepted + completed orders
-  const todayRevenueOrders = todayOrders.filter(o => 
-    o.status === "accepted" || o.status === "ready_for_pickup"
-  )
+  // ALL pending orders (within the 2-week query window) - shown on the pendingOrdersCard
+  const allPendingOrders = realtimeOrders.filter(o => o.status === "pending").length
+
+  // Revenue-generating statuses - captured once an order is accepted and persists through completion
+  const revenueStatuses = ["ready_for_pickup", "completed", "delivered", "accepted", "at_store", "picked_up"]
+
+  // Today's revenue
+  const todayRevenueOrders = todayOrders.filter(o => revenueStatuses.includes(o.status))
   const revenueToday = todayRevenueOrders.reduce((sum, o) => sum + o.total, 0)
 
-  // Calculate weekly revenue (last 7 days) - same logic
+  // Calculate weekly revenue (last 7 days) using the same revenue-status logic
   const sevenDaysAgo = new Date()
   sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7)
-  sevenDaysAgo.setHours(0, 0, 0, 0)
   
   const weeklyRevenue = realtimeOrders
     .filter(o => {
       const orderDate = new Date(o.createdAt)
-      return orderDate >= sevenDaysAgo && (o.status === "ready_for_pickup" || o.status === "accepted")
+      return orderDate >= sevenDaysAgo && revenueStatuses.includes(o.status)
     })
     .reduce((sum, o) => sum + o.total, 0)
 
@@ -74,9 +78,9 @@ export function DashboardPage({
     return date.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: false })
   }
 
-  // Map status for display
+  // Map status for display - all completion statuses render as "completed"
   const getDisplayStatus = (status: string): "pending" | "accepted" | "completed" => {
-    if (status === "ready_for_pickup") return "completed"
+    if (["ready_for_pickup", "at_store", "picked_up", "delivered", "completed"].includes(status)) return "completed"
     if (status === "accepted") return "accepted"
     return "pending"
   }
@@ -182,7 +186,7 @@ export function DashboardPage({
             }}
           >
             <p className="text-xs text-white/80">Pending Orders</p>
-            <p className="text-2xl font-bold text-[#f97316] mt-1">{todayPendingOrders}</p>
+            <p className="text-2xl font-bold text-[#f97316] mt-1">{allPendingOrders}</p>
             <p className="text-[10px] text-white/60 mt-0.5">Action Needed</p>
           </div>
           <div 

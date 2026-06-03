@@ -97,11 +97,16 @@ export default function MerchantApp() {
         setStoreData({
           ...placeholderStoreData,
           storeName: data.storeName || placeholderStoreData.storeName,
+          // Rating and review count are ALWAYS loaded from the Firestore store doc.
+          // They are written by the backend rating endpoint, never calculated from orders.
+          customerRating: typeof data.rating === "number" ? data.rating : 0,
+          totalReviews: typeof data.reviewCount === "number" ? data.reviewCount : 0,
           storeInfo: {
             name: data.storeName || "",
             address: data.address || "",
             phone: data.phone || "",
             logo: data.logo || "",
+            storeLocation: data.location || null,
           },
           openingHours: openingHoursArray,
           products: productsFromFirestore, // Always use Firestore products (empty array is valid)

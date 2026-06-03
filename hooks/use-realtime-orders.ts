@@ -12,6 +12,7 @@ interface UseRealtimeOrdersReturn {
   allOrders: FirestoreOrder[]
   todayOrders: FirestoreOrder[]
   pastOrders: FirestoreOrder[]
+  weeklyRevenueOrders: FirestoreOrder[]
   isLoading: boolean
   error: string | null
   pendingOrderForPopup: FirestoreOrder | null
@@ -63,7 +64,9 @@ export function useRealtimeOrders(storeId: string | null): UseRealtimeOrdersRetu
     return orders.filter(order => {
       const orderDate = new Date(order.createdAt)
       orderDate.setHours(0, 0, 0, 0)
-      const isCompleted = order.status === "ready_for_pickup" || order.status === "rejected"
+      // Past orders include ALL non-pending statuses (accepted, completed, and any
+      // status that represents completion: ready_for_pickup, at_store, picked_up, delivered, completed)
+      const isCompleted = order.status !== "pending"
       const isWithin14Days = orderDate >= fourteenDaysAgo && orderDate < today
       return isCompleted && isWithin14Days
     })
@@ -110,12 +113,12 @@ export function useRealtimeOrders(storeId: string | null): UseRealtimeOrdersRetu
     setIsLoading(true)
     setError(null)
 
-    // Query for ALL orders (pending, accepted, ready_for_pickup) - NOT rejected
-    // This ensures dashboard can show all orders and calculate correct totals
+    // Query for ALL order statuses (except rejected is still included for past orders filtering)
+    // This ensures dashboard, weekly revenue, and past orders all have the full picture
     const ordersQuery = query(
       collection(db, "orders"),
       where("storeId", "==", storeId),
-      where("status", "in", ["pending", "accepted", "ready_for_pickup"]),
+      where("status", "in", ["pending", "accepted", "ready_for_pickup", "completed", "delivered", "picked_up", "at_store"]),
       orderBy("createdAt", "desc")
     )
 
@@ -176,6 +179,15 @@ export function useRealtimeOrders(storeId: string | null): UseRealtimeOrdersRetu
   const todayOrders = getTodayOrders(allOrders)
   const pastOrders = getPastOrders(allOrders)
 
+  // Weekly revenue orders - last 7 days with a revenue-generating status
+  const weeklyRevenueOrders = allOrders.filter(o => {
+    const sevenDaysAgo = new Date()
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7)
+    const orderDate = new Date(o.createdAt)
+    const isRevenue = ["ready_for_pickup", "completed", "delivered", "accepted", "at_store", "picked_up"].includes(o.status)
+    return orderDate >= sevenDaysAgo && isRevenue
+  })
+
   return {
     pendingOrders,
     acceptedOrders,
@@ -183,6 +195,7 @@ export function useRealtimeOrders(storeId: string | null): UseRealtimeOrdersRetu
     allOrders,
     todayOrders,
     pastOrders,
+    weeklyRevenueOrders,
     isLoading,
     error,
     pendingOrderForPopup,

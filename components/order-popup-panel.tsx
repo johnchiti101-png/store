@@ -20,7 +20,7 @@ export interface FirestoreOrder {
   subtotal: number
   deliveryFee: number
   total: number
-  status: "pending" | "accepted" | "ready_for_pickup" | "rejected"
+  status: "pending" | "accepted" | "ready_for_pickup" | "rejected" | "completed" | "delivered" | "picked_up" | "at_store"
   storeId: string
   createdAt: Date
 }
