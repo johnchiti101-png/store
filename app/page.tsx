@@ -445,6 +445,7 @@ export default function MerchantApp() {
             <NotificationsPage
               storeId={currentUserId}
               pendingOrders={pendingOrders}
+              realtimeOrders={allOrders}
               onMarkAllRead={handleMarkAllRead}
               onNavigate={handleNavigate}
             />

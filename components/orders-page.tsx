@@ -3,6 +3,7 @@
 import { useState } from "react"
 import { ChevronLeft, X } from "lucide-react"
 import type { FirestoreOrder } from "@/components/order-popup-panel"
+import { isOrderCompleted } from "@/lib/order-status"
 
 interface OrdersPageProps {
   realtimeOrders: FirestoreOrder[]
@@ -23,10 +24,10 @@ export function OrdersPage({ realtimeOrders }: OrdersPageProps) {
     return orderDate.getTime() === today.getTime()
   })
 
-  // Filter past orders within the last 14 days
+  // Filter completed orders within the last 90 days
   const pastOrders = allOrders.filter(order => {
-    const fourteenDaysAgo = new Date()
-    fourteenDaysAgo.setDate(fourteenDaysAgo.getDate() - 14)
+    const ninetyDaysAgo = new Date()
+    ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90)
     fourteenDaysAgo.setHours(0, 0, 0, 0)
     
     const today = new Date()
@@ -35,9 +36,9 @@ export function OrdersPage({ realtimeOrders }: OrdersPageProps) {
     const orderDate = new Date(order.createdAt)
     orderDate.setHours(0, 0, 0, 0)
     
-    const isCompleted = ["ready_for_pickup", "completed", "delivered", "picked_up", "at_store"].includes(order.status)
-    const isWithin14Days = orderDate >= fourteenDaysAgo && orderDate < today
-    return isCompleted && isWithin14Days
+    const isCompleted = isOrderCompleted(order.status)
+    const isWithin90Days = orderDate >= ninetyDaysAgo && orderDate < today
+    return isCompleted && isWithin90Days
   })
 
   const displayedOrders = activeTab === "today" ? todayOrders : pastOrders

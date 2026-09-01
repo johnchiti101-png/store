@@ -4,6 +4,7 @@ import { Star, TrendingUp } from "lucide-react"
 import { WaterDroplets } from "@/components/water-droplets"
 import type { StoreData } from "@/lib/store-data"
 import type { FirestoreOrder } from "@/components/order-popup-panel"
+import { isOrderCompleted, REVENUE_STATUSES } from "@/lib/order-status"
 
 interface DashboardPageProps {
   data: StoreData & { storeInfo?: { logo?: string } }
@@ -38,17 +39,17 @@ export function DashboardPage({
   
   // Completed orders count for today - all statuses that represent completion
   const todayCompletedOrders = todayOrders.filter(o =>
-    ["ready_for_pickup", "completed", "delivered", "picked_up", "at_store"].includes(o.status)
+    isOrderCompleted(o.status)
   ).length
   
   // Pending orders count for today (used only for the "X Completed / X Pending" sub-line)
   const todayPendingOrders = todayOrders.filter(o => o.status === "pending").length
 
   // ALL pending orders (within the 2-week query window) - shown on the pendingOrdersCard
-  const allPendingOrders = realtimeOrders.filter(o => o.status === "pending").length
+  const allPendingOrders = todayOrders.filter(o => o.status === "pending").length
 
   // Revenue-generating statuses - captured once an order is accepted and persists through completion
-  const revenueStatuses = ["ready_for_pickup", "completed", "delivered", "accepted", "at_store", "picked_up"]
+  const revenueStatuses = REVENUE_STATUSES
 
   // Today's revenue
   const todayRevenueOrders = todayOrders.filter(o => revenueStatuses.includes(o.status))
@@ -63,11 +64,6 @@ export function DashboardPage({
       const orderDate = new Date(o.createdAt)
       return orderDate >= sevenDaysAgo && revenueStatuses.includes(o.status)
     })
-    .reduce((sum, o) => sum + o.total, 0)
-
-  // All-time revenue from every revenue-generating order in the shared Firestore stream
-  const allTimeRevenue = realtimeOrders
-    .filter(o => revenueStatuses.includes(o.status))
     .reduce((sum, o) => sum + o.total, 0)
 
   // Recent orders - show 5 most recent orders from Firestore 
@@ -209,22 +205,6 @@ export function DashboardPage({
               ZMW {weeklyRevenue.toLocaleString("en-US", { minimumFractionDigits: 2 })}
             </p>
             <p className="text-[10px] text-white/60 mt-0.5">This Week</p>
-          </div>
-          <div
-            id="allTimeRevenueCard"
-            className="rounded-xl p-3 transition-transform duration-200 active:scale-95"
-            style={{
-              backdropFilter: "blur(8px)",
-              WebkitBackdropFilter: "blur(8px)",
-              background: "rgba(255, 255, 255, 0.15)",
-              border: "1px solid rgba(255, 255, 255, 0.25)",
-            }}
-          >
-            <p className="text-xs text-white/80">All-time Revenue</p>
-            <p className="text-xl font-bold text-[#22c55e] mt-1">
-              ZMW {allTimeRevenue.toLocaleString("en-US", { minimumFractionDigits: 2 })}
-            </p>
-            <p className="text-[10px] text-white/60 mt-0.5">Since opening</p>
           </div>
           <div 
             id="customerRatingCard" 

@@ -7,6 +7,7 @@ import type { FirestoreOrder } from "@/components/order-popup-panel"
 interface NotificationsPageProps {
   storeId: string | null
   pendingOrders: FirestoreOrder[]
+  realtimeOrders: FirestoreOrder[]
   onMarkAllRead: () => void
   onNavigate: (page: string) => void
 }
@@ -28,7 +29,7 @@ interface Notification {
   isClickable?: boolean
 }
 
-export function NotificationsPage({ storeId, pendingOrders, onMarkAllRead, onNavigate }: NotificationsPageProps) {
+export function NotificationsPage({ storeId, pendingOrders, realtimeOrders, onMarkAllRead, onNavigate }: NotificationsPageProps) {
   const [notifications, setNotifications] = useState<Notification[]>([])
   const [readIds, setReadIds] = useState<Set<string>>(new Set())
 

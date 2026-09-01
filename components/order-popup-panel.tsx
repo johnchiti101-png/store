@@ -5,6 +5,14 @@ import { Loader2 } from "lucide-react"
 import { doc, updateDoc } from "firebase/firestore"
 import { db } from "@/lib/firebase"
 
+export interface DriverSnapshot {
+  id?: string
+  name?: string
+  phone?: string
+  vehicle?: string
+  licensePlate?: string
+}
+
 export interface OrderItem {
   name: string
   price: number
@@ -24,6 +32,7 @@ export interface FirestoreOrder {
   status: "pending" | "accepted" | "ready_for_pickup" | "rejected" | "completed" | "delivered" | "picked_up" | "at_store"
   storeId: string
   createdAt: Date
+  driverSnapshot?: DriverSnapshot
 }
 
 interface OrderPopupPanelProps {

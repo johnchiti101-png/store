@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react"
 import { collection, query, where, onSnapshot, orderBy, Timestamp } from "firebase/firestore"
 import { db } from "@/lib/firebase"
 import type { FirestoreOrder } from "@/components/order-popup-panel"
+import { ALL_ORDER_STATUSES, COMPLETED_STATUSES, REVENUE_STATUSES } from "@/lib/order-status"
 
 interface UseRealtimeOrdersReturn {
   pendingOrders: FirestoreOrder[]
@@ -54,9 +55,9 @@ export function useRealtimeOrders(storeId: string | null): UseRealtimeOrdersRetu
 
   // Filter past orders (last 14 days, status = ready_for_pickup/completed)
   const getPastOrders = useCallback((orders: FirestoreOrder[]): FirestoreOrder[] => {
-    const fourteenDaysAgo = new Date()
-    fourteenDaysAgo.setDate(fourteenDaysAgo.getDate() - 14)
-    fourteenDaysAgo.setHours(0, 0, 0, 0)
+    const ninetyDaysAgo = new Date()
+    ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90)
+    ninetyDaysAgo.setHours(0, 0, 0, 0)
     
     const today = new Date()
     today.setHours(0, 0, 0, 0)
@@ -67,8 +68,8 @@ export function useRealtimeOrders(storeId: string | null): UseRealtimeOrdersRetu
       // Past orders include ALL non-pending statuses (accepted, completed, and any
       // status that represents completion: ready_for_pickup, at_store, picked_up, delivered, completed)
       const isCompleted = order.status !== "pending"
-      const isWithin14Days = orderDate >= fourteenDaysAgo && orderDate < today
-      return isCompleted && isWithin14Days
+      const isWithin90Days = orderDate >= ninetyDaysAgo && orderDate < today
+      return isCompleted && isWithin90Days
     })
   }, [])
 
@@ -118,7 +119,7 @@ export function useRealtimeOrders(storeId: string | null): UseRealtimeOrdersRetu
     const ordersQuery = query(
       collection(db, "orders"),
       where("storeId", "==", storeId),
-      where("status", "in", ["pending", "accepted", "ready_for_pickup", "completed", "delivered", "picked_up", "at_store"]),
+      where("status", "in", ALL_ORDER_STATUSES),
       orderBy("createdAt", "desc")
     )
 
@@ -140,14 +141,13 @@ export function useRealtimeOrders(storeId: string | null): UseRealtimeOrdersRetu
             status: data.status,
             storeId: data.storeId,
             createdAt: convertTimestamp(data.createdAt),
+            driverSnapshot: data.driverSnapshot || undefined,
           }
         })
 
         const pending = orders.filter(o => o.status === "pending")
         const accepted = orders.filter(o => o.status === "accepted")
-        const completed = orders.filter(o =>
-          ["ready_for_pickup", "completed", "delivered", "picked_up", "at_store"].includes(o.status)
-        )
+        const completed = orders.filter(o => COMPLETED_STATUSES.includes(o.status as (typeof COMPLETED_STATUSES)[number]))
         
         // Update state
         setPendingOrders(pending)
@@ -186,7 +186,7 @@ export function useRealtimeOrders(storeId: string | null): UseRealtimeOrdersRetu
     const sevenDaysAgo = new Date()
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7)
     const orderDate = new Date(o.createdAt)
-    const isRevenue = ["ready_for_pickup", "completed", "delivered", "accepted", "at_store", "picked_up"].includes(o.status)
+    const isRevenue = REVENUE_STATUSES.includes(o.status as (typeof REVENUE_STATUSES)[number])
     return orderDate >= sevenDaysAgo && isRevenue
   })
 
