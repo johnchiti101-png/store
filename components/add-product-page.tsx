@@ -33,7 +33,9 @@ export function AddProductPage({ product, storeId, storeName, storeAddress, onBa
   const [name, setName] = useState(product?.name || "")
   const [category, setCategory] = useState(product?.category || "Fresh Produce")
   const [price, setPrice] = useState(product?.price?.toString() || "")
-  const [unit, setUnit] = useState(product?.unit || "item")
+  const initialUnitMatch = product?.unit?.match(/^(\\d+(?:\\.\\d+)?)(.*)$/)
+  const [unitAmount, setUnitAmount] = useState(initialUnitMatch?.[1] || "1")
+  const [unitType, setUnitType] = useState(initialUnitMatch?.[2] || product?.unit || "item")
   const [description, setDescription] = useState(product?.description || "")
   const [available, setAvailable] = useState(product?.available ?? true)
   const [image, setImage] = useState(product?.image || "")
@@ -92,7 +94,7 @@ export function AddProductPage({ product, storeId, storeName, storeAddress, onBa
         imageUrl: imageUrl || "",
         description: description.trim(),
         category,
-        unit,
+        unit: `${unitAmount}${unitType}`,
         stockQuantity: parseInt(stock) || 0,
         availability: available,
         storeId,
@@ -110,7 +112,7 @@ export function AddProductPage({ product, storeId, storeName, storeAddress, onBa
         name: name.trim(),
         category,
         price: parseFloat(price) || 0,
-        unit,
+        unit: `${unitAmount}${unitType}`,
         description: description.trim(),
         available,
         image: imageUrl || "/images/placeholder.jpg",
@@ -257,22 +259,32 @@ export function AddProductPage({ product, storeId, storeName, storeAddress, onBa
               <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
                 Unit
               </label>
-              <select
-                value={unit}
-                onChange={(e) => setUnit(e.target.value)}
-                className="w-full px-4 py-3 bg-card border border-border rounded-xl text-sm text-card-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all appearance-none cursor-pointer"
-                style={{
-                  backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E")`,
-                  backgroundRepeat: "no-repeat",
-                  backgroundPosition: "right 12px center",
-                }}
-              >
-                {units.map((u) => (
-                  <option key={u} value={u}>
-                    {u}
-                  </option>
-                ))}
-              </select>
+              <div className="flex items-center overflow-hidden bg-card border border-border rounded-xl focus-within:ring-2 focus-within:ring-primary/20 focus-within:border-primary transition-all">
+                <input
+                  type="number"
+                  min="0"
+                  max="4"
+                  step="0.01"
+                  placeholder="1"
+                  value={unitAmount}
+                  onChange={(e) => {
+                    const value = e.target.value
+                    if (value === "" || Number(value) <= 4) setUnitAmount(value)
+                  }}
+                  className="min-w-0 flex-1 px-4 py-3 bg-transparent text-sm text-card-foreground placeholder:text-muted-foreground focus:outline-none"
+                  aria-label="Unit amount"
+                />
+                <select
+                  value={unitType}
+                  onChange={(e) => setUnitType(e.target.value)}
+                  className="w-20 shrink-0 border-l border-border bg-transparent px-2 py-3 text-sm text-card-foreground focus:outline-none cursor-pointer"
+                  aria-label="Unit type"
+                >
+                  {units.map((u) => (
+                    <option key={u} value={u}>{u}</option>
+                  ))}
+                </select>
+              </div>
             </div>
           </div>
 

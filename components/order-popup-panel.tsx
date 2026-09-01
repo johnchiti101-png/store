@@ -9,6 +9,7 @@ export interface OrderItem {
   name: string
   price: number
   quantity?: number
+  image?: string
 }
 
 export interface FirestoreOrder {

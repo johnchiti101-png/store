@@ -451,6 +451,10 @@ export default function MerchantApp() {
               products={storeData.products}
               storeId={currentUserId}
               onBack={handleBack}
+              onAddProduct={() => {
+                setEditingProduct(null)
+                setActivePage("addProduct")
+              }}
               onEditProduct={handleEditProduct}
               onDeleteProduct={handleDeleteProduct}
               onToggleAvailability={handleToggleProductAvailability}

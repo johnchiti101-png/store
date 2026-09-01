@@ -1,6 +1,6 @@
 "use client"
 
-import { ChevronLeft, Search, Pencil, Trash2, Loader2 } from "lucide-react"
+import { ChevronLeft, Search, Pencil, Trash2, Loader2, Plus } from "lucide-react"
 import { doc, deleteDoc } from "firebase/firestore"
 import { db } from "@/lib/firebase"
 import type { Product } from "@/lib/store-data"
@@ -10,6 +10,7 @@ interface ProductsPageProps {
   products: Product[]
   storeId: string
   onBack: () => void
+  onAddProduct: () => void
   onEditProduct: (product: Product) => void
   onDeleteProduct: (productId: string) => void
   onToggleAvailability: (productId: string) => void
@@ -19,6 +20,7 @@ export function ProductsPage({
   products,
   storeId,
   onBack,
+  onAddProduct,
   onEditProduct,
   onDeleteProduct,
   onToggleAvailability,
@@ -62,7 +64,15 @@ export function ProductsPage({
             </button>
             <h1 className="text-xl font-bold text-card-foreground">My Products</h1>
           </div>
-          <button
+          <div className="flex items-center gap-2">
+            <button
+              onClick={onAddProduct}
+              className="p-2 text-primary hover:text-primary/80 transition-colors"
+              aria-label="Add product"
+            >
+              <Plus className="w-6 h-6" />
+            </button>
+            <button
             className="p-2 text-muted-foreground hover:text-card-foreground transition-colors"
             aria-label="Search products"
             onClick={() => {
@@ -72,6 +82,7 @@ export function ProductsPage({
           >
             <Search className="w-5 h-5" />
           </button>
+          </div>
         </div>
 
         {/* Search Input */}

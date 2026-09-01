@@ -2,6 +2,7 @@
 
 import { useState, useRef } from "react"
 import { ChevronLeft, Upload, MapPin, Phone, Loader2 } from "lucide-react"
+import { searchAddress, type AddressSuggestion } from "@/lib/address-service"
 import { doc, setDoc } from "firebase/firestore"
 import { db } from "@/lib/firebase"
 import { uploadStoreLogo } from "@/lib/cloudinary"
@@ -18,12 +19,34 @@ export function StoreInfoPage({ storeInfo, storeId, onBack, onSave }: StoreInfoP
   const [logo, setLogo] = useState(storeInfo.logo || "")
   const [name, setName] = useState(storeInfo.name || "")
   const [address, setAddress] = useState(storeInfo.address || "")
+  const [addressCoords, setAddressCoords] = useState(storeInfo.storeLocation || null)
+  const [addressSuggestions, setAddressSuggestions] = useState<AddressSuggestion[]>([])
+  const [showAddressSuggestions, setShowAddressSuggestions] = useState(false)
   const [phone, setPhone] = useState(storeInfo.phone || "")
   const [logoFile, setLogoFile] = useState<File | null>(null)
   const [isUploading, setIsUploading] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+
+  const handleAddressSearch = async (value: string) => {
+    setAddress(value)
+    setAddressCoords(null)
+    if (value.trim().length > 2) {
+      const results = await searchAddress(value)
+      setAddressSuggestions(results)
+      setShowAddressSuggestions(true)
+    } else {
+      setAddressSuggestions([])
+      setShowAddressSuggestions(false)
+    }
+  }
+
+  const handleSelectAddress = (suggestion: AddressSuggestion) => {
+    setAddress(suggestion.fullAddress)
+    setAddressCoords(suggestion.coordinates || null)
+    setShowAddressSuggestions(false)
+  }
 
   const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -64,6 +87,7 @@ export function StoreInfoPage({ storeInfo, storeId, onBack, onSave }: StoreInfoP
         logo: logoUrl,
         storeName: name.trim(),
         address: address.trim(),
+        location: addressCoords,
         phone: phone.trim(),
       }, { merge: true })
 
@@ -72,6 +96,7 @@ export function StoreInfoPage({ storeInfo, storeId, onBack, onSave }: StoreInfoP
         name: name.trim(),
         address: address.trim(),
         phone: phone.trim(),
+        storeLocation: addressCoords,
       })
     } catch (err) {
       console.error("Error saving store info:", err)
@@ -170,9 +195,27 @@ export function StoreInfoPage({ storeInfo, storeId, onBack, onSave }: StoreInfoP
                 type="text"
                 placeholder="Enter store address"
                 value={address}
-                onChange={(e) => setAddress(e.target.value)}
+                onChange={(e) => handleAddressSearch(e.target.value)}
+                onFocus={() => address.length > 2 && setShowAddressSuggestions(true)}
+                onBlur={() => setTimeout(() => setShowAddressSuggestions(false), 200)}
                 className="w-full pl-11 pr-4 py-3 bg-card border border-border rounded-xl text-sm text-card-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
               />
+              {showAddressSuggestions && addressSuggestions.length > 0 && (
+                <div className="absolute top-full left-0 right-0 mt-1 rounded-xl overflow-hidden z-20 max-h-48 overflow-y-auto bg-card border border-border shadow-lg">
+                  {addressSuggestions.map((suggestion) => (
+                    <button
+                      key={suggestion.id}
+                      type="button"
+                      onMouseDown={(event) => event.preventDefault()}
+                      onClick={() => handleSelectAddress(suggestion)}
+                      className="w-full text-left px-4 py-2 text-sm text-card-foreground hover:bg-accent transition-colors"
+                    >
+                      <div className="font-medium">{suggestion.name}</div>
+                      <div className="text-xs text-muted-foreground">{suggestion.fullAddress}</div>
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
 
