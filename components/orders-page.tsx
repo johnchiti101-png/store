@@ -28,7 +28,7 @@ export function OrdersPage({ realtimeOrders }: OrdersPageProps) {
   const pastOrders = allOrders.filter(order => {
     const ninetyDaysAgo = new Date()
     ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90)
-    fourteenDaysAgo.setHours(0, 0, 0, 0)
+    ninetyDaysAgo.setHours(0, 0, 0, 0)
     
     const today = new Date()
     today.setHours(0, 0, 0, 0)
