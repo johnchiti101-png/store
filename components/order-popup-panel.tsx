@@ -11,6 +11,14 @@ export interface DriverSnapshot {
   phone?: string
   vehicle?: string
   licensePlate?: string
+  brand?: string
+  carImage?: string
+  color?: string
+  firstName?: string
+  model?: string
+  plateNumber?: string
+  profilePicture?: string
+  rating?: number
 }
 
 export interface OrderItem {
@@ -29,7 +37,8 @@ export interface FirestoreOrder {
   subtotal: number
   deliveryFee: number
   total: number
-  status: "pending" | "accepted" | "ready_for_pickup" | "rejected" | "completed" | "delivered" | "picked_up" | "at_store"
+  status: "pending" | "accepted" | "ready_for_pickup" | "driver_assigned" | "rejected" | "completed" | "delivered" | "picked_up" | "at_store"
+  driverStatus?: string
   storeId: string
   createdAt: Date
   driverSnapshot?: DriverSnapshot

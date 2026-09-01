@@ -139,6 +139,7 @@ export function useRealtimeOrders(storeId: string | null): UseRealtimeOrdersRetu
             deliveryFee: data.deliveryFee || 0,
             total: data.total || 0,
             status: data.status,
+            driverStatus: data.driverStatus || undefined,
             storeId: data.storeId,
             createdAt: convertTimestamp(data.createdAt),
             driverSnapshot: data.driverSnapshot || undefined,
