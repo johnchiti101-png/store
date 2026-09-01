@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useEffect } from "react"
 import { onAuthStateChanged, signOut, type User } from "firebase/auth"
-import { doc, getDoc, collection, getDocs, deleteDoc } from "firebase/firestore"
+import { doc, collection, getDocs, deleteDoc, onSnapshot, type DocumentSnapshot } from "firebase/firestore"
 import { auth, db } from "@/lib/firebase"
 import { WelcomePage } from "@/components/welcome-page"
 import { LoginPage } from "@/components/login-page"
@@ -44,7 +44,6 @@ export default function MerchantApp() {
     pendingOrderForPopup,
     dismissPopup,
     handleStatusUpdate,
-    capturedRevenue,
   } = useRealtimeOrders(currentUserId)
 
   const pageOrder = ["dashboard", "orders", "notifications", "settings"]
@@ -55,7 +54,17 @@ export default function MerchantApp() {
     const RETRY_DELAY = 2000
 
     try {
-      const storeDoc = await getDoc(doc(db, "stores", uid))
+      const storeDoc = await new Promise<DocumentSnapshot>((resolve, reject) => {
+        let unsubscribe: (() => void) | undefined
+        unsubscribe = onSnapshot(
+          doc(db, "stores", uid),
+          (snapshot) => {
+            resolve(snapshot)
+            unsubscribe?.()
+          },
+          reject,
+        )
+      })
       if (storeDoc.exists()) {
         const data = storeDoc.data()
         
@@ -98,11 +107,16 @@ export default function MerchantApp() {
         setStoreData({
           ...placeholderStoreData,
           storeName: data.storeName || placeholderStoreData.storeName,
+          // Rating and review count are ALWAYS loaded from the Firestore store doc.
+          // They are written by the backend rating endpoint, never calculated from orders.
+          customerRating: typeof data.rating === "number" ? data.rating : 0,
+          totalReviews: typeof data.reviewCount === "number" ? data.reviewCount : 0,
           storeInfo: {
             name: data.storeName || "",
             address: data.address || "",
             phone: data.phone || "",
             logo: data.logo || "",
+            storeLocation: data.location || null,
           },
           openingHours: openingHoursArray,
           products: productsFromFirestore, // Always use Firestore products (empty array is valid)
@@ -418,17 +432,12 @@ export default function MerchantApp() {
             <DashboardPage
               data={storeData}
               realtimeOrders={allOrders}
-              pendingCount={pendingOrders.length}
-              acceptedCount={acceptedOrders.length}
-              completedCount={completedOrders.length}
-              capturedRevenue={capturedRevenue}
               onToggleStatus={handleToggleStatus}
               onNavigate={handleNavigate}
             />
           )}
           {activePage === "orders" && (
-            <OrdersPage 
-              storeId={currentUserId}
+          <OrdersPage
               realtimeOrders={allOrders}
             />
           )}
@@ -451,6 +460,10 @@ export default function MerchantApp() {
               products={storeData.products}
               storeId={currentUserId}
               onBack={handleBack}
+              onAddProduct={() => {
+                setEditingProduct(null)
+                setActivePage("addProduct")
+              }}
               onEditProduct={handleEditProduct}
               onDeleteProduct={handleDeleteProduct}
               onToggleAvailability={handleToggleProductAvailability}

@@ -43,6 +43,7 @@ export interface StoreInfo {
   name: string
   address: string
   phone: string
+  storeLocation?: { lat: number; lng: number } | null
 }
 
 export interface StoreData {

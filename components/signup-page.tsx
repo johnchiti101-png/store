@@ -45,6 +45,7 @@ export function SignupPage({ onSignupSuccess, onSignIn }: SignupPageProps) {
   const [storeName, setStoreName] = useState("")
   const [category, setCategory] = useState("")
   const [address, setAddress] = useState("")
+  const [addressCoords, setAddressCoords] = useState<{ lat: number; lng: number } | null>(null)
   const [addressSuggestions, setAddressSuggestions] = useState<AddressSuggestion[]>([])
   const [showAddressSuggestions, setShowAddressSuggestions] = useState(false)
 
@@ -137,6 +138,7 @@ export function SignupPage({ onSignupSuccess, onSignIn }: SignupPageProps) {
 
   const handleSelectAddress = useCallback((suggestion: AddressSuggestion) => {
     setAddress(suggestion.fullAddress)
+    setAddressCoords(suggestion.coordinates || null)
     setShowAddressSuggestions(false)
   }, [])
 
@@ -160,6 +162,10 @@ export function SignupPage({ onSignupSuccess, onSignIn }: SignupPageProps) {
         phone: `+26${phone}`,
         email,
         address,
+        location: addressCoords ? {
+          lat: addressCoords.lat,
+          lng: addressCoords.lng,
+        } : null,
         rating: 0,
         reviewCount: 0,
         createdAt: serverTimestamp(),
@@ -205,7 +211,7 @@ export function SignupPage({ onSignupSuccess, onSignIn }: SignupPageProps) {
     } finally {
       setIsLoading(false)
     }
-  }, [email, password, firstName, surname, storeName, category, phone, address, validateStep2, onSignupSuccess])
+  }, [email, password, firstName, surname, storeName, category, phone, address, addressCoords, validateStep2, onSignupSuccess])
 
   return (
     <div className="relative min-h-dvh w-full overflow-hidden">

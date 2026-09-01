@@ -12,13 +12,12 @@ interface UseRealtimeOrdersReturn {
   allOrders: FirestoreOrder[]
   todayOrders: FirestoreOrder[]
   pastOrders: FirestoreOrder[]
+  weeklyRevenueOrders: FirestoreOrder[]
   isLoading: boolean
   error: string | null
   pendingOrderForPopup: FirestoreOrder | null
   dismissPopup: () => void
   handleStatusUpdate: (orderId: string, newStatus: string) => void
-  // Revenue tracking - persists when orders move from accepted to completed
-  capturedRevenue: number
 }
 
 export function useRealtimeOrders(storeId: string | null): UseRealtimeOrdersReturn {
@@ -30,9 +29,6 @@ export function useRealtimeOrders(storeId: string | null): UseRealtimeOrdersRetu
   const [error, setError] = useState<string | null>(null)
   const [pendingOrderForPopup, setPendingOrderForPopup] = useState<FirestoreOrder | null>(null)
   const [dismissedOrderIds, setDismissedOrderIds] = useState<Set<string>>(new Set())
-  
-  // Track captured revenue from accepted orders (persists even after becoming completed)
-  const [capturedRevenueIds, setCapturedRevenueIds] = useState<Set<string>>(new Set())
 
   // Convert Firestore timestamp to Date
   const convertTimestamp = (timestamp: unknown): Date => {
@@ -68,7 +64,9 @@ export function useRealtimeOrders(storeId: string | null): UseRealtimeOrdersRetu
     return orders.filter(order => {
       const orderDate = new Date(order.createdAt)
       orderDate.setHours(0, 0, 0, 0)
-      const isCompleted = order.status === "ready_for_pickup" || order.status === "rejected"
+      // Past orders include ALL non-pending statuses (accepted, completed, and any
+      // status that represents completion: ready_for_pickup, at_store, picked_up, delivered, completed)
+      const isCompleted = order.status !== "pending"
       const isWithin14Days = orderDate >= fourteenDaysAgo && orderDate < today
       return isCompleted && isWithin14Days
     })
@@ -84,35 +82,27 @@ export function useRealtimeOrders(storeId: string | null): UseRealtimeOrdersRetu
 
   // Handle status update from popup
   const handleStatusUpdate = useCallback((orderId: string, newStatus: string) => {
-    // When an order is accepted, capture its revenue
+    // Update local state immediately for instant UI feedback
     if (newStatus === "accepted") {
+      // Move from pending to accepted - panel stays open to show "Ready for pickup" button
       const order = pendingOrders.find(o => o.id === orderId)
+      setPendingOrders(prev => prev.filter(o => o.id !== orderId))
       if (order) {
-        setCapturedRevenueIds(prev => new Set([...prev, orderId]))
+        setAcceptedOrders(prev => [...prev, { ...order, status: "accepted" as const }])
+        // Update the popup order to reflect accepted status (panel stays visible)
+        setPendingOrderForPopup({ ...order, status: "accepted" as const })
       }
-      setPendingOrders(prev => prev.filter(o => o.id !== orderId))
-      setAcceptedOrders(prev => {
-        const orderToMove = pendingOrders.find(o => o.id === orderId)
-        if (orderToMove) {
-          return [...prev, { ...orderToMove, status: "accepted" as const }]
-        }
-        return prev
-      })
-    } else if (newStatus === "rejected") {
+      // Add to dismissed so it doesn't trigger a new popup if it appears in pending again
+      setDismissedOrderIds(prev => new Set([...prev, orderId]))
+    } else if (newStatus === "rejected" || newStatus === "ready_for_pickup") {
+      // Order is complete - close the panel
       setPendingOrders(prev => prev.filter(o => o.id !== orderId))
       setAcceptedOrders(prev => prev.filter(o => o.id !== orderId))
-    } else if (newStatus === "ready_for_pickup") {
-      // Move from accepted to completed - revenue already captured
-      setAcceptedOrders(prev => prev.filter(o => o.id !== orderId))
-      const orderToMove = acceptedOrders.find(o => o.id === orderId)
-      if (orderToMove) {
-        setCompletedOrders(prev => [...prev, { ...orderToMove, status: "ready_for_pickup" as const }])
-      }
+      // Add to dismissed and clear popup
+      setDismissedOrderIds(prev => new Set([...prev, orderId]))
+      setPendingOrderForPopup(null)
     }
-    
-    // Add to dismissed so popup doesn't reappear
-    setDismissedOrderIds(prev => new Set([...prev, orderId]))
-  }, [pendingOrders, acceptedOrders])
+  }, [pendingOrders])
 
   useEffect(() => {
     if (!storeId) {
@@ -123,17 +113,18 @@ export function useRealtimeOrders(storeId: string | null): UseRealtimeOrdersRetu
     setIsLoading(true)
     setError(null)
 
-    // Query for ALL orders (pending, accepted, ready_for_pickup, rejected)
-    // This ensures we count all orders for "Orders Today"
-    const allOrdersQuery = query(
+    // Query for ALL order statuses (except rejected is still included for past orders filtering)
+    // This ensures dashboard, weekly revenue, and past orders all have the full picture
+    const ordersQuery = query(
       collection(db, "orders"),
       where("storeId", "==", storeId),
+      where("status", "in", ["pending", "accepted", "ready_for_pickup", "completed", "delivered", "picked_up", "at_store"]),
       orderBy("createdAt", "desc")
     )
 
-    // Set up real-time listener for ALL orders
+    // Set up real-time listener
     const unsubscribe = onSnapshot(
-      allOrdersQuery,
+      ordersQuery,
       (snapshot) => {
         const orders: FirestoreOrder[] = snapshot.docs.map((doc) => {
           const data = doc.data()
@@ -152,17 +143,11 @@ export function useRealtimeOrders(storeId: string | null): UseRealtimeOrdersRetu
           }
         })
 
-        // Separate by status
         const pending = orders.filter(o => o.status === "pending")
         const accepted = orders.filter(o => o.status === "accepted")
-        const completed = orders.filter(o => o.status === "ready_for_pickup")
-        
-        // Update captured revenue IDs - include any accepted or completed orders
-        // This ensures revenue persists even after logout/login
-        const revenueOrders = orders.filter(o => 
-          o.status === "accepted" || o.status === "ready_for_pickup"
+        const completed = orders.filter(o =>
+          ["ready_for_pickup", "completed", "delivered", "picked_up", "at_store"].includes(o.status)
         )
-        setCapturedRevenueIds(new Set(revenueOrders.map(o => o.id)))
         
         // Update state
         setPendingOrders(pending)
@@ -172,7 +157,7 @@ export function useRealtimeOrders(storeId: string | null): UseRealtimeOrdersRetu
         setIsLoading(false)
       },
       (err) => {
-        console.error("[v0] Error listening to orders:", err)
+        console.error("Error listening to orders:", err)
         setError(err.message)
         setIsLoading(false)
       }
@@ -195,11 +180,15 @@ export function useRealtimeOrders(storeId: string | null): UseRealtimeOrdersRetu
   // Compute derived values
   const todayOrders = getTodayOrders(allOrders)
   const pastOrders = getPastOrders(allOrders)
-  
-  // Calculate captured revenue (from accepted and completed orders)
-  const capturedRevenue = allOrders
-    .filter(o => capturedRevenueIds.has(o.id))
-    .reduce((sum, o) => sum + o.total, 0)
+
+  // Weekly revenue orders - last 7 days with a revenue-generating status
+  const weeklyRevenueOrders = allOrders.filter(o => {
+    const sevenDaysAgo = new Date()
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7)
+    const orderDate = new Date(o.createdAt)
+    const isRevenue = ["ready_for_pickup", "completed", "delivered", "accepted", "at_store", "picked_up"].includes(o.status)
+    return orderDate >= sevenDaysAgo && isRevenue
+  })
 
   return {
     pendingOrders,
@@ -208,11 +197,11 @@ export function useRealtimeOrders(storeId: string | null): UseRealtimeOrdersRetu
     allOrders,
     todayOrders,
     pastOrders,
+    weeklyRevenueOrders,
     isLoading,
     error,
     pendingOrderForPopup,
     dismissPopup,
     handleStatusUpdate,
-    capturedRevenue,
   }
 }
