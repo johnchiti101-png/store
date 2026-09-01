@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useEffect } from "react"
 import { onAuthStateChanged, signOut, type User } from "firebase/auth"
-import { doc, getDoc, collection, getDocs, deleteDoc } from "firebase/firestore"
+import { doc, collection, getDocs, deleteDoc, onSnapshot, type DocumentSnapshot } from "firebase/firestore"
 import { auth, db } from "@/lib/firebase"
 import { WelcomePage } from "@/components/welcome-page"
 import { LoginPage } from "@/components/login-page"
@@ -54,7 +54,17 @@ export default function MerchantApp() {
     const RETRY_DELAY = 2000
 
     try {
-      const storeDoc = await getDoc(doc(db, "stores", uid))
+      const storeDoc = await new Promise<DocumentSnapshot>((resolve, reject) => {
+        let unsubscribe: (() => void) | undefined
+        unsubscribe = onSnapshot(
+          doc(db, "stores", uid),
+          (snapshot) => {
+            resolve(snapshot)
+            unsubscribe?.()
+          },
+          reject,
+        )
+      })
       if (storeDoc.exists()) {
         const data = storeDoc.data()
         
@@ -427,8 +437,7 @@ export default function MerchantApp() {
             />
           )}
           {activePage === "orders" && (
-            <OrdersPage 
-              storeId={currentUserId}
+          <OrdersPage
               realtimeOrders={allOrders}
             />
           )}

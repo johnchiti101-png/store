@@ -65,6 +65,11 @@ export function DashboardPage({
     })
     .reduce((sum, o) => sum + o.total, 0)
 
+  // All-time revenue from every revenue-generating order in the shared Firestore stream
+  const allTimeRevenue = realtimeOrders
+    .filter(o => revenueStatuses.includes(o.status))
+    .reduce((sum, o) => sum + o.total, 0)
+
   // Recent orders - show 5 most recent orders from Firestore 
   // Include pending, accepted, and completed (ready_for_pickup) - NOT rejected
   // Sort by createdAt descending to ensure most recent first
@@ -204,6 +209,22 @@ export function DashboardPage({
               ZMW {weeklyRevenue.toLocaleString("en-US", { minimumFractionDigits: 2 })}
             </p>
             <p className="text-[10px] text-white/60 mt-0.5">This Week</p>
+          </div>
+          <div
+            id="allTimeRevenueCard"
+            className="rounded-xl p-3 transition-transform duration-200 active:scale-95"
+            style={{
+              backdropFilter: "blur(8px)",
+              WebkitBackdropFilter: "blur(8px)",
+              background: "rgba(255, 255, 255, 0.15)",
+              border: "1px solid rgba(255, 255, 255, 0.25)",
+            }}
+          >
+            <p className="text-xs text-white/80">All-time Revenue</p>
+            <p className="text-xl font-bold text-[#22c55e] mt-1">
+              ZMW {allTimeRevenue.toLocaleString("en-US", { minimumFractionDigits: 2 })}
+            </p>
+            <p className="text-[10px] text-white/60 mt-0.5">Since opening</p>
           </div>
           <div 
             id="customerRatingCard" 

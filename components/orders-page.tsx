@@ -1,70 +1,18 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import { ChevronLeft, X } from "lucide-react"
-import { collection, query, where, onSnapshot, orderBy, Timestamp } from "firebase/firestore"
-import { db } from "@/lib/firebase"
 import type { FirestoreOrder } from "@/components/order-popup-panel"
 
 interface OrdersPageProps {
-  storeId: string | null
   realtimeOrders: FirestoreOrder[]
 }
 
-export function OrdersPage({ storeId, realtimeOrders }: OrdersPageProps) {
+export function OrdersPage({ realtimeOrders }: OrdersPageProps) {
   const [activeTab, setActiveTab] = useState<"today" | "past">("today")
-  const [allOrders, setAllOrders] = useState<FirestoreOrder[]>([])
   const [selectedOrder, setSelectedOrder] = useState<FirestoreOrder | null>(null)
 
-  // Convert Firestore timestamp to Date
-  const convertTimestamp = (timestamp: unknown): Date => {
-    if (timestamp instanceof Timestamp) {
-      return timestamp.toDate()
-    }
-    if (timestamp instanceof Date) {
-      return timestamp
-    }
-    return new Date()
-  }
-
-  // Subscribe to all orders for this store (including completed)
-  useEffect(() => {
-    if (!storeId) return
-
-    const ordersQuery = query(
-      collection(db, "orders"),
-      where("storeId", "==", storeId),
-      orderBy("createdAt", "desc")
-    )
-
-    const unsubscribe = onSnapshot(
-      ordersQuery,
-      (snapshot) => {
-        const orders: FirestoreOrder[] = snapshot.docs.map((doc) => {
-          const data = doc.data()
-          return {
-            id: doc.id,
-            orderId: data.orderId || doc.id.slice(-5).toUpperCase(),
-            userName: data.userName || "Customer",
-            destinationAddress: data.destinationAddress || "",
-            items: data.items || [],
-            subtotal: data.subtotal || 0,
-            deliveryFee: data.deliveryFee || 0,
-            total: data.total || 0,
-            status: data.status,
-            storeId: data.storeId,
-            createdAt: convertTimestamp(data.createdAt),
-          }
-        })
-        setAllOrders(orders)
-      },
-      (err) => {
-        console.error("Error fetching orders:", err)
-      }
-    )
-
-    return () => unsubscribe()
-  }, [storeId])
+  const allOrders = realtimeOrders
 
   // Filter today's orders
   const todayOrders = allOrders.filter(order => {
@@ -75,7 +23,7 @@ export function OrdersPage({ storeId, realtimeOrders }: OrdersPageProps) {
     return orderDate.getTime() === today.getTime()
   })
 
-  // Filter past orders (completed/ready_for_pickup within last 14 days)
+  // Filter past orders within the last 14 days
   const pastOrders = allOrders.filter(order => {
     const fourteenDaysAgo = new Date()
     fourteenDaysAgo.setDate(fourteenDaysAgo.getDate() - 14)
@@ -87,7 +35,7 @@ export function OrdersPage({ storeId, realtimeOrders }: OrdersPageProps) {
     const orderDate = new Date(order.createdAt)
     orderDate.setHours(0, 0, 0, 0)
     
-    const isCompleted = order.status === "ready_for_pickup"
+    const isCompleted = ["ready_for_pickup", "completed", "delivered", "picked_up", "at_store"].includes(order.status)
     const isWithin14Days = orderDate >= fourteenDaysAgo && orderDate < today
     return isCompleted && isWithin14Days
   })

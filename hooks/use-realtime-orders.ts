@@ -145,7 +145,9 @@ export function useRealtimeOrders(storeId: string | null): UseRealtimeOrdersRetu
 
         const pending = orders.filter(o => o.status === "pending")
         const accepted = orders.filter(o => o.status === "accepted")
-        const completed = orders.filter(o => o.status === "ready_for_pickup")
+        const completed = orders.filter(o =>
+          ["ready_for_pickup", "completed", "delivered", "picked_up", "at_store"].includes(o.status)
+        )
         
         // Update state
         setPendingOrders(pending)
