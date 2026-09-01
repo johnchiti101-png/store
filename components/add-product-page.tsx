@@ -261,15 +261,15 @@ export function AddProductPage({ product, storeId, storeName, storeAddress, onBa
               </label>
               <div className="flex items-center overflow-hidden bg-card border border-border rounded-xl focus-within:ring-2 focus-within:ring-primary/20 focus-within:border-primary transition-all">
                 <input
-                  type="number"
-                  min="0"
-                  max="4"
-                  step="0.01"
+                  type="text"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  maxLength={4}
                   placeholder="1"
                   value={unitAmount}
                   onChange={(e) => {
-                    const value = e.target.value
-                    if (value === "" || Number(value) <= 4) setUnitAmount(value)
+                    const value = e.target.value.replace(/\D/g, "").slice(0, 4)
+                    setUnitAmount(value)
                   }}
                   className="min-w-0 flex-1 px-4 py-3 bg-transparent text-sm text-card-foreground placeholder:text-muted-foreground focus:outline-none"
                   aria-label="Unit amount"
